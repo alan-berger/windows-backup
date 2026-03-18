@@ -8,8 +8,8 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 
 - **3-2-1 backup strategy** — two independent local destinations plus off-site cloud storage
 - **Versioned Documents backups** — configurable number of timestamped copies retained on each destination; oldest versions pruned automatically
-- **Flat VirtualBox VM backups** — single-copy backup of each VM directory; running VMs are detected and skipped automatically (safe, never touches a live VM)
-- **SHA256 integrity verification** — every file copied to a local destination is hashed and compared against its source; any mismatch is flagged upon backup completion
+- **Flat VM backups** — single-copy backup of each VM directory; running VMs are detected and skipped automatically (safe, never touches a live VM)
+- **SHA256 integrity verification** — every file copied to a local destination is hashed and compared against its source; any mismatch is flagged immediately
 - **Restore firetest** — after every run, a randomly selected file from each local destination is re-hashed against its source to confirm the backup is actually readable and complete (customisable size range)
 - **Parallel local copy** — both local destinations (D and E) are written simultaneously using PowerShell runspaces, significantly reducing total backup time
 - **DKIM-signed email notifications** — backup started, backup completed, and missed-schedule alerts are all sent as RFC 6376-compliant DKIM-signed emails, satisfying strict DMARC (`p=reject; adkim=s`) policies
@@ -49,7 +49,7 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 ### 1. Clone or download
 
 ```powershell
-git clone https://github.com/alan-berger/windows-backup.git
+git clone https://github.com/alan-bergerE/windows-backup.git
 cd windows-backup
 ```
 
@@ -108,10 +108,96 @@ You will be prompted to enter the SMTP password with masked input. The password 
 
 > **Gmail users:** use a 16-character [App Password](https://support.google.com/accounts/answer/185833), not your Google account password. App Passwords require 2-Step Verification to be enabled on your account.
 
-### 5. First run
+### 5. Self-sign the scripts (recommended)
+
+Signing the scripts with a code-signing certificate lets you run them under the `AllSigned` execution policy instead of relying on `-ExecutionPolicy Bypass`. This is the more secure long-term configuration: only scripts that carry a valid, trusted signature will execute.
+
+> **Note:** re-sign both scripts whenever you edit them. A signature becomes invalid as soon as the file is modified.
+
+#### 5a. Create a self-signed code-signing certificate
+
+Run the following in an elevated PowerShell session (Run as Administrator):
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File ".\WindowsBackup.ps1"
+# Create a code-signing certificate in the current user's personal store
+$cert = New-SelfSignedCertificate `
+    -Type          CodeSigningCert `
+    -Subject       "CN=WindowsBackupCodeSigning" `
+    -CertStoreLocation "Cert:\CurrentUser\My" `
+    -HashAlgorithm SHA256 `
+    -NotAfter      (Get-Date).AddYears(10)
+
+Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
+```
+
+#### 5b. Trust the certificate
+
+For PowerShell's `AllSigned` policy to accept the signature, the signing certificate must be present in both the **Trusted Publishers** and **Trusted Root Certification Authorities** stores. Because this is a self-signed certificate it acts as its own root.
+
+```powershell
+# Trust as a publisher (required for AllSigned)
+$store = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+    "TrustedPublisher", "CurrentUser")
+$store.Open("ReadWrite")
+$store.Add($cert)
+$store.Close()
+
+# Trust the root (suppresses "untrusted root" warnings)
+$store = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+    "Root", "CurrentUser")
+$store.Open("ReadWrite")
+$store.Add($cert)
+$store.Close()
+
+Write-Host "Certificate trusted."
+```
+
+> **Task Scheduler note:** if your scheduled task runs as a different account than your interactive session (e.g. a service account), repeat steps 5a and 5b while logged in as — or impersonating — that account, so the certificate is trusted in that user's stores.
+
+#### 5c. Sign both scripts
+
+```powershell
+# Retrieve the certificate (if $cert is no longer in scope, load it by thumbprint)
+# $cert = Get-Item "Cert:\CurrentUser\My\<thumbprint from step 5a>"
+
+Set-AuthenticodeSignature -FilePath ".\WindowsBackup.ps1"    -Certificate $cert
+Set-AuthenticodeSignature -FilePath ".\Set-SmtpCredential.ps1" -Certificate $cert
+```
+
+Each command prints a `Status` field. A value of `Valid` confirms the script was signed successfully.
+
+#### 5d. Set the execution policy
+
+```powershell
+# Apply to the current user (no elevation required)
+Set-ExecutionPolicy -ExecutionPolicy AllSigned -Scope CurrentUser
+```
+
+Verify that both scripts are now accepted:
+
+```powershell
+Get-AuthenticodeSignature ".\WindowsBackup.ps1"
+Get-AuthenticodeSignature ".\Set-SmtpCredential.ps1"
+```
+
+Both should show `Status : Valid`.
+
+#### 5e. Update your Task Scheduler action
+
+Once the scripts are signed and the policy is set to `AllSigned`, update the Task Scheduler action arguments to remove `-ExecutionPolicy Bypass`:
+
+```
+-NonInteractive -File "C:\Path\To\WindowsBackup.ps1"
+```
+
+If you prefer to keep `Bypass` for simplicity (accepting the slightly looser policy), the scripts will continue to work either way.
+
+---
+
+### 6. First run
+
+```powershell
+powershell.exe -File ".\WindowsBackup.ps1"
 ```
 
 On first run the script will:
@@ -122,7 +208,7 @@ On first run the script will:
 4. Perform the full backup
 5. Send a `[BACKUP OK]` (or `[BACKUP FAILED]`) completion email with duration and integrity results
 
-### 6. Add the DKIM DNS record
+### 7. Add the DKIM DNS record
 
 The console output and log file from the first run will contain an entry like:
 
@@ -139,14 +225,14 @@ Add this as a DNS TXT record with your DNS provider. Allow up to 5 minutes for p
 nslookup -type=TXT backup._domainkey.yourdomain.com 1.1.1.1
 ```
 
-### 7. Schedule with Task Scheduler
+### 8. Schedule with Task Scheduler
 
 1. Open **Task Scheduler** → **Create Task**
 2. **General:** Run whether user is logged on or not; Run with highest privileges
 3. **Triggers:** Daily at your preferred time (e.g. 02:00)
 4. **Actions:** Start a program
    - Program: `powershell.exe`
-   - Arguments: `-NonInteractive -ExecutionPolicy Bypass -File "C:\Path\To\WindowsBackup.ps1"`
+   - Arguments: `-NonInteractive -File "C:\Path\To\WindowsBackup.ps1"` (omit `-ExecutionPolicy Bypass` if you completed step 5)
 5. **Settings:** Run task as soon as possible after a scheduled start is missed; Do not start a new instance if already running
 
 ---
@@ -260,7 +346,7 @@ All variables are in the **CONFIGURATION BLOCK** at the top of `WindowsBackup.ps
 | `$DkimCertSubject` | `CN=BackupDKIM` | Subject name of the certificate in the Windows Certificate Store |
 | `$DkimCertStore` | `CurrentUser` | `CurrentUser` for named user accounts; `LocalMachine` for SYSTEM/service accounts |
 | `$DkimSelector` | `backup` | DKIM selector — the DNS record will be `<selector>._domainkey.<domain>` |
-| `$DkimDomain` | `yourdomain.com` | Must exactly match the domain in `$EmailFrom` |
+| `$DkimDomain` | | Must exactly match the domain in `$EmailFrom` |
 
 ### Scheduling
 
