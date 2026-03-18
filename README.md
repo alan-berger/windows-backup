@@ -9,8 +9,8 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 - **3-2-1 backup strategy** — two independent local destinations plus off-site cloud storage
 - **Versioned Documents backups** — configurable number of timestamped copies retained on each destination; oldest versions pruned automatically
 - **Flat VirtualBox VM backups** — single-copy backup of each VM directory; running VMs are detected and skipped automatically (safe, never touches a live VM)
-- **SHA256 integrity verification** — every file copied to a local destination is hashed and compared against its source; any mismatch is flagged immediately
-- **Restore firetest** — after every run, a randomly selected file from each local destination is re-hashed against its source to confirm the backup is actually readable and complete
+- **SHA256 integrity verification** — every file copied to a local destination is hashed and compared against its source; any mismatch is flagged upon backup completion
+- **Restore firetest** — after every run, a randomly selected file from each local destination is re-hashed against its source to confirm the backup is actually readable and complete (customisable size range)
 - **Parallel local copy** — both local destinations (D and E) are written simultaneously using PowerShell runspaces, significantly reducing total backup time
 - **DKIM-signed email notifications** — backup started, backup completed, and missed-schedule alerts are all sent as RFC 6376-compliant DKIM-signed emails, satisfying strict DMARC (`p=reject; adkim=s`) policies
 - **SMTP password in Windows Credential Manager** — the SMTP password is never stored in any script file; it is stored securely via DPAPI and retrieved at runtime
