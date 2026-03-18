@@ -8,7 +8,7 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 
 - **3-2-1 backup strategy** — two independent local destinations plus off-site cloud storage
 - **Versioned Documents backups** — configurable number of timestamped copies retained on each destination; oldest versions pruned automatically
-- **Flat VM backups** — single-copy backup of each VM directory; running VMs are detected and skipped automatically (safe, never touches a live VM)
+- **Flat VirtualBox VM backups** — single-copy backup of each VM directory; running VMs are detected and skipped automatically (safe, never touches a live VM)
 - **SHA256 integrity verification** — every file copied to a local destination is hashed and compared against its source; any mismatch is flagged immediately
 - **Restore firetest** — after every run, a randomly selected file from each local destination is re-hashed against its source to confirm the backup is actually readable and complete
 - **Parallel local copy** — both local destinations (D and E) are written simultaneously using PowerShell runspaces, significantly reducing total backup time
