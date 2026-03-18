@@ -49,7 +49,7 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 ### 1. Clone or download
 
 ```powershell
-git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git
+git clone https://github.com/alan-berger/windows-backup.git
 cd YOUR-REPO
 ```
 
