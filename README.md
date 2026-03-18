@@ -260,7 +260,7 @@ All variables are in the **CONFIGURATION BLOCK** at the top of `WindowsBackup.ps
 | `$DkimCertSubject` | `CN=BackupDKIM` | Subject name of the certificate in the Windows Certificate Store |
 | `$DkimCertStore` | `CurrentUser` | `CurrentUser` for named user accounts; `LocalMachine` for SYSTEM/service accounts |
 | `$DkimSelector` | `backup` | DKIM selector — the DNS record will be `<selector>._domainkey.<domain>` |
-| `$DkimDomain` | | Must exactly match the domain in `$EmailFrom` |
+| `$DkimDomain` | yourdomain.com | Must exactly match the domain in `$EmailFrom` |
 
 ### Scheduling
 
