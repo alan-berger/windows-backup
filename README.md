@@ -10,7 +10,7 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 - **Versioned Documents backups** — configurable number of timestamped copies retained on each destination; oldest versions pruned automatically
 - **Flat VM backups** — single-copy backup of each VM directory; running VMs are detected and skipped automatically (safe, never touches a live VM)
 - **SHA256 integrity verification** — every file copied to a local destination is hashed and compared against its source; any mismatch is flagged immediately
-- **Restore firetest** — after every run, a randomly selected file from each local destination is re-hashed against its source to confirm the backup is actually readable and complete (customisable size range)
+- **Restore firetest** — after every run, a randomly selected file from each local destination is re-hashed against its source to confirm the backup is actually readable and complete
 - **Parallel local copy** — both local destinations (D and E) are written simultaneously using PowerShell runspaces, significantly reducing total backup time
 - **DKIM-signed email notifications** — backup started, backup completed, and missed-schedule alerts are all sent as RFC 6376-compliant DKIM-signed emails, satisfying strict DMARC (`p=reject; adkim=s`) policies
 - **SMTP password in Windows Credential Manager** — the SMTP password is never stored in any script file; it is stored securely via DPAPI and retrieved at runtime
@@ -49,7 +49,7 @@ A comprehensive, production-ready automated backup solution for Windows 11, writ
 ### 1. Clone or download
 
 ```powershell
-git clone https://github.com/alan-bergerE/windows-backup.git
+git clone https://github.com/alan-berger/windows-backup.git
 cd windows-backup
 ```
 
@@ -112,8 +112,6 @@ You will be prompted to enter the SMTP password with masked input. The password 
 
 Signing the scripts with a code-signing certificate lets you run them under the `AllSigned` execution policy instead of relying on `-ExecutionPolicy Bypass`. This is the more secure long-term configuration: only scripts that carry a valid, trusted signature will execute.
 
-> **Note:** re-sign both scripts whenever you edit them. A signature becomes invalid as soon as the file is modified.
-
 #### 5a. Create a self-signed code-signing certificate
 
 Run the following in an elevated PowerShell session (Run as Administrator):
@@ -156,15 +154,30 @@ Write-Host "Certificate trusted."
 
 #### 5c. Sign both scripts
 
+The signing commands need to know where your scripts are. Use whichever approach suits you:
+
+**Option A — change to the script directory first, then use relative paths:**
+
 ```powershell
+cd "C:\Path\To\Your\Scripts"
+
 # Retrieve the certificate (if $cert is no longer in scope, load it by thumbprint)
 # $cert = Get-Item "Cert:\CurrentUser\My\<thumbprint from step 5a>"
 
-Set-AuthenticodeSignature -FilePath ".\WindowsBackup.ps1"    -Certificate $cert
+Set-AuthenticodeSignature -FilePath ".\WindowsBackup.ps1"      -Certificate $cert
 Set-AuthenticodeSignature -FilePath ".\Set-SmtpCredential.ps1" -Certificate $cert
 ```
 
+**Option B — use full absolute paths from anywhere:**
+
+```powershell
+Set-AuthenticodeSignature -FilePath "C:\Path\To\Your\Scripts\WindowsBackup.ps1"      -Certificate $cert
+Set-AuthenticodeSignature -FilePath "C:\Path\To\Your\Scripts\Set-SmtpCredential.ps1" -Certificate $cert
+```
+
 Each command prints a `Status` field. A value of `Valid` confirms the script was signed successfully.
+
+> **Important:** re-sign both scripts whenever you edit them. A signature becomes invalid the moment a file is modified — the script will refuse to run under `AllSigned` until re-signed.
 
 #### 5d. Set the execution policy
 
