@@ -2,6 +2,14 @@
 
 A comprehensive, production-ready automated backup solution for Windows 11, written in PowerShell. Backs up your Documents folder and VirtualBox VMs to two local drives and Backblaze B2 cloud storage, with full SHA256 integrity verification, DKIM-signed email notifications, and restore verification on every run.
 
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Strategy](https://img.shields.io/badge/backup-3--2--1%20strategy-brightgreen)
+![Integrity](https://img.shields.io/badge/integrity-SHA256%20%2B%20restore%20firetest-brightgreen)
+![Credentials](https://img.shields.io/badge/credentials-Credential%20Manager%20%2B%20Cert%20Store-important)
+![Email](https://img.shields.io/badge/notifications-DKIM--signed%20email-informational)
+![No Modules](https://img.shields.io/badge/dependencies-no%20external%20modules-lightgrey)
+
 ---
 
 ## Features
